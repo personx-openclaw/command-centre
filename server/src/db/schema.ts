@@ -1,4 +1,4 @@
-import { sqliteTable, text, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 export const users = sqliteTable('users', {
@@ -23,7 +23,7 @@ export const tasks = sqliteTable('tasks', {
   priority: text('priority', { enum: ['urgent', 'high', 'medium', 'low'] })
     .notNull()
     .default('medium'),
-  position: real('position').notNull(),
+  position: text('position').notNull(), // Fractional index as text
   tags: text('tags'),
   dueDate: text('due_date'),
   completedAt: text('completed_at'),
