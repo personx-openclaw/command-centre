@@ -1,5 +1,20 @@
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
+interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  status: 'backlog' | 'today' | 'in_progress' | 'done';
+  priority: 'urgent' | 'high' | 'medium' | 'low';
+  position: string;
+  tags?: string;
+  dueDate?: string;
+  completedAt?: string;
+  source: 'manual' | 'telegram' | 'morning_report';
+  createdAt: string;
+  updatedAt: string;
+}
+
 class ApiClient {
   private getToken(): string | null {
     return localStorage.getItem('auth_token');
@@ -22,15 +37,13 @@ class ApiClient {
     const response = await fetch(`${API_URL}${endpoint}`, {
       ...options,
       headers,
-      credentials: 'include', // Include cookies for refresh token
+      credentials: 'include',
     });
 
     if (!response.ok) {
       if (response.status === 401) {
-        // Try to refresh token
         const refreshed = await this.refreshToken();
         if (refreshed) {
-          // Retry original request
           return this.request(endpoint, options);
         }
       }
@@ -78,37 +91,45 @@ class ApiClient {
     return this.request<{ user: any }>('/auth/me');
   }
 
-  // Kanban
+  // Tasks
   async getTasks() {
-    return this.request<any[]>('/kanban/tasks');
+    return this.request<Task[]>('/tasks');
   }
 
-  async createTask(data: any) {
-    return this.request<any>('/kanban/tasks', {
+  async createTask(data: Partial<Task>) {
+    return this.request<Task>('/tasks', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async updateTask(id: string, data: any) {
-    return this.request<any>(`/kanban/tasks/${id}`, {
+  async updateTask(id: string, data: Partial<Task>) {
+    return this.request<Task>(`/tasks/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
   }
 
   async deleteTask(id: string) {
-    return this.request<{ success: boolean }>(`/kanban/tasks/${id}`, {
+    return this.request<{ success: boolean }>(`/tasks/${id}`, {
       method: 'DELETE',
     });
   }
 
-  async reorderTasks(tasks: Array<{ id: string; position: number; status: string }>) {
-    return this.request<{ success: boolean }>('/kanban/tasks/reorder', {
-      method: 'POST',
-      body: JSON.stringify({ tasks }),
+  async moveTask(id: string, status: string, position: string) {
+    return this.request<Task>(`/tasks/${id}/move`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, position }),
+    });
+  }
+
+  async reorderTasks(updates: Array<{ id: string; position: string; status: string }>) {
+    return this.request<{ success: boolean }>('/tasks/reorder', {
+      method: 'PATCH',
+      body: JSON.stringify({ tasks: updates }),
     });
   }
 }
 
 export const api = new ApiClient();
+export type { Task };
