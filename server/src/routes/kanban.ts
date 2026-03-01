@@ -15,6 +15,7 @@ const createTaskSchema = z.object({
   description: z.string().optional(),
   status: z.enum(['backlog', 'today', 'in_progress', 'done']).default('backlog'),
   priority: z.enum(['urgent', 'high', 'medium', 'low']).default('medium'),
+  position: z.string(),
   tags: z.string().optional(),
   dueDate: z.string().optional(),
   source: z.enum(['manual', 'telegram', 'morning_report']).default('manual'),
@@ -25,10 +26,25 @@ const updateTaskSchema = z.object({
   description: z.string().optional(),
   status: z.enum(['backlog', 'today', 'in_progress', 'done']).optional(),
   priority: z.enum(['urgent', 'high', 'medium', 'low']).optional(),
-  position: z.number().optional(),
+  position: z.string().optional(),
   tags: z.string().optional(),
   dueDate: z.string().optional(),
   completedAt: z.string().optional(),
+});
+
+const moveTaskSchema = z.object({
+  status: z.enum(['backlog', 'today', 'in_progress', 'done']),
+  position: z.string(),
+});
+
+const reorderSchema = z.object({
+  tasks: z.array(
+    z.object({
+      id: z.string(),
+      position: z.string(),
+      status: z.string(),
+    })
+  ),
 });
 
 // Get all tasks
@@ -54,17 +70,6 @@ router.post('/tasks', async (req: AuthRequest, res) => {
     const taskId = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    // Get max position for this status
-    const maxPositionTask = await db.query.tasks.findFirst({
-      where: and(
-        eq(schema.tasks.userId, req.userId!),
-        eq(schema.tasks.status, data.status)
-      ),
-      orderBy: (tasks, { desc }) => [desc(tasks.position)],
-    });
-
-    const position = (maxPositionTask?.position ?? 0) + 1;
-
     const [task] = await db
       .insert(schema.tasks)
       .values({
@@ -74,7 +79,7 @@ router.post('/tasks', async (req: AuthRequest, res) => {
         description: data.description || null,
         status: data.status,
         priority: data.priority,
-        position,
+        position: data.position,
         tags: data.tags || null,
         dueDate: data.dueDate || null,
         completedAt: null,
@@ -137,6 +142,47 @@ router.patch('/tasks/:id', async (req: AuthRequest, res) => {
   }
 });
 
+// Move task (drag and drop)
+router.patch('/tasks/:id/move', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { status, position } = moveTaskSchema.parse(req.body);
+
+    const updates: any = {
+      status,
+      position,
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Auto-set/clear completedAt
+    if (status === 'done') {
+      updates.completedAt = new Date().toISOString();
+    } else {
+      updates.completedAt = null;
+    }
+
+    const [task] = await db
+      .update(schema.tasks)
+      .set(updates)
+      .where(and(eq(schema.tasks.id, id), eq(schema.tasks.userId, req.userId!)))
+      .returning();
+
+    if (!task) {
+      res.status(404).json({ error: 'Task not found' });
+      return;
+    }
+
+    res.json(task);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.errors });
+      return;
+    }
+    console.error('Move task error:', error);
+    res.status(500).json({ error: 'Failed to move task' });
+  }
+});
+
 // Delete task
 router.delete('/tasks/:id', async (req: AuthRequest, res) => {
   try {
@@ -153,30 +199,28 @@ router.delete('/tasks/:id', async (req: AuthRequest, res) => {
   }
 });
 
-// Reorder tasks (batch position update)
-router.post('/tasks/reorder', async (req: AuthRequest, res) => {
+// Batch reorder
+router.patch('/tasks/reorder', async (req: AuthRequest, res) => {
   try {
-    const { tasks: taskUpdates } = req.body;
+    const { tasks: taskUpdates } = reorderSchema.parse(req.body);
 
-    if (!Array.isArray(taskUpdates)) {
-      res.status(400).json({ error: 'Invalid request' });
-      return;
-    }
-
-    // Update positions in transaction (better-sqlite3 is synchronous)
     for (const { id, position, status } of taskUpdates) {
       await db
         .update(schema.tasks)
-        .set({ 
-          position, 
+        .set({
+          position,
           status,
-          updatedAt: new Date().toISOString() 
+          updatedAt: new Date().toISOString(),
         })
         .where(and(eq(schema.tasks.id, id), eq(schema.tasks.userId, req.userId!)));
     }
 
     res.json({ success: true });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.errors });
+      return;
+    }
     console.error('Reorder tasks error:', error);
     res.status(500).json({ error: 'Failed to reorder tasks' });
   }
