@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import kanbanRoutes from './routes/kanban.js';
 import contactsRoutes from './routes/contacts.js';
+import interactionsRoutes from './routes/interactions.js';
 
 dotenv.config();
 
@@ -47,6 +48,7 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/kanban', kanbanRoutes);
 app.use('/api/contacts', contactsRoutes);
+app.use('/api', interactionsRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
