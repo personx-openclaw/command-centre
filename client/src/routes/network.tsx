@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { ContactsTab } from '@/components/modules/network/contacts-tab';
 import { PipelineTab } from '@/components/modules/network/pipeline-tab';
+import { InsightsTab } from '@/components/modules/network/insights-tab';
 import { useUIStore } from '@/stores/ui';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -58,11 +59,7 @@ function NetworkPage() {
           >
             {activeTab === 'contacts' && <ContactsTab />}
             {activeTab === 'pipeline' && <PipelineTab />}
-            {activeTab === 'insights' && (
-              <div className="text-center py-12 text-text-muted">
-                Insights tab coming soon...
-              </div>
-            )}
+            {activeTab === 'insights' && <InsightsTab />}
           </motion.div>
         </main>
       </motion.div>
