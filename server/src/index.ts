@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import kanbanRoutes from './routes/kanban.js';
+import contactsRoutes from './routes/contacts.js';
 
 dotenv.config();
 
@@ -45,6 +46,7 @@ app.use((req, res, next) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/kanban', kanbanRoutes);
+app.use('/api/contacts', contactsRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
