@@ -15,7 +15,7 @@ const NAV_ITEMS = [
   { path: '/brain', label: 'Second Brain', icon: Brain, active: false },
   { path: '/training', label: 'Training', icon: Activity, active: false },
   { path: '/study', label: 'CFA Study', icon: BookOpen, active: false },
-  { path: '/network', label: 'Network', icon: Users, active: false },
+  { path: '/network', label: 'Network', icon: Users, active: true },
   { path: '/ai-costs', label: 'AI Costs', icon: Cpu, active: false },
   { path: '/github', label: 'GitHub', icon: GitBranch, active: false },
   { path: '/reports', label: 'Reports', icon: FileText, active: false },
