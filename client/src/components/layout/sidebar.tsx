@@ -7,6 +7,8 @@ import { useUIStore } from '@/stores/ui';
 import { Link, useLocation } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import { useQuery } from '@tanstack/react-query';
+import { networkApi } from '@/lib/api-network';
 
 const NAV_ITEMS = [
   { path: '/overview', label: 'Overview', icon: LayoutDashboard, active: false },
@@ -26,6 +28,14 @@ const NAV_ITEMS = [
 export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
   const location = useLocation();
+
+  // Get overdue follow-ups count
+  const { data: statsData } = useQuery({
+    queryKey: ['network-stats'],
+    queryFn: () => networkApi.getStats(),
+  });
+
+  const overdueCount = statsData?.overdueFollowUps || 0;
 
   return (
     <Tooltip.Provider>
@@ -52,7 +62,7 @@ export function Sidebar() {
             const content = (
               <div
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-xl transition-all',
+                  'flex items-center gap-3 px-3 py-2 rounded-xl transition-all relative',
                   isActive && item.active
                     ? 'bg-accent-primary-muted text-accent-primary'
                     : item.active
@@ -62,6 +72,12 @@ export function Sidebar() {
               >
                 <Icon size={20} />
                 {!sidebarCollapsed && <span className="text-sm font-medium">{item.label}</span>}
+                {/* Badge for Network overdue count */}
+                {item.path === '/network' && overdueCount > 0 && (
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 bg-semantic-error text-white text-xs font-semibold rounded-full w-5 h-5 flex items-center justify-center">
+                    {overdueCount}
+                  </span>
+                )}
               </div>
             );
 
