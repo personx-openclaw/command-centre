@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+
 
 // Register (admin only - manual setup)
 router.post('/register', async (req, res) => {
@@ -37,7 +37,7 @@ router.post('/register', async (req, res) => {
       passwordHash,
     });
 
-    const token = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ userId }, process.env.JWT_SECRET || 'dev-secret-change-me', { expiresIn: '30d' });
 
     res.json({
       user: { id: userId, username, createdAt: new Date().toISOString() },
@@ -75,7 +75,7 @@ router.post('/login', async (req, res) => {
       return;
     }
 
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'dev-secret-change-me', { expiresIn: '30d' });
 
     res.json({
       user: { id: user.id, username: user.username, createdAt: user.createdAt },
@@ -98,7 +98,7 @@ router.get('/me', async (req, res) => {
     }
 
     const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-change-me') as { userId: string };
 
     const user = await db.query.users.findFirst({
       where: eq(schema.users.id, decoded.userId),
