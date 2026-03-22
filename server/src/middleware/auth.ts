@@ -2,9 +2,14 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const BOT_API_KEY = process.env.BOT_API_KEY;
 
 export interface AuthRequest extends Request {
   userId?: string;
+  user?: {
+    id: string;
+    username: string;
+  };
 }
 
 const loginAttempts = new Map<string, { count: number; lockUntil: number }>();
@@ -39,6 +44,21 @@ export const authMiddleware = (
   res: Response,
   next: NextFunction
 ): void => {
+  // Check for bot API key first
+  const botKey = req.headers['x-bot-key'] as string;
+  
+  if (botKey && BOT_API_KEY && botKey === BOT_API_KEY) {
+    // Valid bot key - attach bot user
+    req.userId = 'bot';
+    req.user = {
+      id: 'bot',
+      username: 'openclaw',
+    };
+    next();
+    return;
+  }
+
+  // Fall back to JWT check
   const authHeader = req.headers.authorization;
 
   if (!authHeader?.startsWith('Bearer ')) {
