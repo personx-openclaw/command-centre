@@ -16,20 +16,19 @@ export const tasks = sqliteTable('tasks', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
-  description: text('description'),
-  status: text('status', { enum: ['backlog', 'today', 'in_progress', 'done'] })
+  description: text('description').notNull().default(''),
+  column: text('column', { enum: ['backlog', 'today', 'in_progress', 'done'] })
     .notNull()
     .default('backlog'),
-  priority: text('priority', { enum: ['urgent', 'high', 'medium', 'low'] })
+  priority: text('priority', { enum: ['low', 'medium', 'high', 'urgent'] })
     .notNull()
     .default('medium'),
-  position: text('position').notNull(), // Fractional index as text
-  tags: text('tags'),
-  dueDate: text('due_date'),
-  completedAt: text('completed_at'),
-  source: text('source', { enum: ['manual', 'telegram', 'morning_report'] })
+  tags: text('tags').notNull().default('[]'), // JSON array as text
+  source: text('source', { enum: ['manual', 'ai_suggested'] })
     .notNull()
     .default('manual'),
+  order: real('order').notNull().default(0),
+  dueDate: text('due_date'), // nullable ISO date string
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
