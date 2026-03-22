@@ -71,7 +71,7 @@ router.delete('/:id', async (req: AuthRequest, res) => {
 
 router.post('/ingest', async (req: AuthRequest, res) => {
   try {
-    const { title, description, priority, tags, column, due_date } = req.body;
+    const { title, description, priority, tags, column, due_date, agentType, agentDescription } = req.body;
     if (!title) { res.status(400).json({ error: 'Title is required' }); return; }
     const user = await db.query.users.findFirst();
     if (!user) { res.status(500).json({ error: 'No user found' }); return; }
@@ -87,6 +87,8 @@ router.post('/ingest', async (req: AuthRequest, res) => {
       tags: JSON.stringify(tags || []),
       source: 'telegram' as const,
       position: String(Date.now()),
+      agentType: agentType || null,
+      agentDescription: agentDescription || description || null,
       dueDate: due_date || null,
       completedAt: null,
       createdAt: now,
