@@ -226,4 +226,72 @@ router.patch('/tasks/reorder', async (req: AuthRequest, res) => {
   }
 });
 
+// Ingest endpoint (for bot/brief service)
+const ingestTaskSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  tags: z.array(z.string()).optional(),
+  column: z.enum(['backlog', 'today', 'in_progress', 'done']).optional(),
+  dueDate: z.string().optional(),
+  source: z.enum(['manual', 'ai_suggested']).optional(),
+});
+
+router.post('/tasks/ingest', async (req: AuthRequest, res) => {
+  try {
+    // Verify bot authentication
+    if (req.userId !== 'bot') {
+      res.status(403).json({ error: 'This endpoint requires bot authentication' });
+      return;
+    }
+
+    const data = ingestTaskSchema.parse(req.body);
+
+    const taskId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    // Get the highest order in the target column
+    const targetColumn = data.column || 'backlog';
+    const existingTasks = await db.query.tasks.findMany({
+      where: eq(schema.tasks.column, targetColumn),
+      orderBy: (tasks, { desc }) => [desc(tasks.order)],
+      limit: 1,
+    });
+
+    const newOrder = existingTasks.length > 0 ? existingTasks[0].order + 1 : 1;
+
+    const [task] = await db
+      .insert(schema.tasks)
+      .values({
+        id: taskId,
+        userId: 'bot', // Bot-created tasks have userId='bot'
+        title: data.title,
+        description: data.description || '',
+        column: targetColumn,
+        priority: data.priority || 'medium',
+        tags: JSON.stringify(data.tags || []),
+        dueDate: data.dueDate || null,
+        source: data.source || 'ai_suggested',
+        order: newOrder,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    res.json({
+      id: task.id,
+      title: task.title,
+      column: task.column,
+      priority: task.priority,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.errors });
+      return;
+    }
+    console.error('Ingest task error:', error);
+    res.status(500).json({ error: 'Failed to ingest task' });
+  }
+});
+
 export default router;
