@@ -10,13 +10,14 @@ import { generateKeyBetween } from '@/lib/fractional-index';
 import {
   DndContext,
   DragOverlay,
-  closestCorners,
+  rectIntersection,
   PointerSensor,
   useSensor,
   useSensors,
   type DragStartEvent,
   type DragOverEvent,
   type DragEndEvent,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -114,37 +115,52 @@ function TasksPage() {
   };
 
   const handleDragOver = (event: DragOverEvent) => {
-    // Optional: implement optimistic updates here
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    setActiveId(null);
-
     if (!over) return;
 
     const activeTask = tasks.find((t) => t.id === active.id);
     if (!activeTask) return;
 
-    // Determine target column and position
+    let overColumn: Column;
+    if (typeof over.id === 'string' && over.id.startsWith('column-')) {
+      overColumn = over.id.replace('column-', '') as Column;
+    } else {
+      const overTask = tasks.find((t) => t.id === over.id);
+      if (!overTask) return;
+      overColumn = overTask.status as Column;
+    }
+
+    if (activeTask.status !== overColumn) {
+      moveMutation.mutate({
+        id: activeTask.id,
+        status: overColumn,
+        position: String(Date.now()),
+      });
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    if (!over) return;
+
+    const activeTask = tasks.find((t) => t.id === active.id);
+    if (!activeTask) return;
+
     let targetColumn: Column;
     let targetIndex: number;
 
     if (typeof over.id === 'string' && over.id.startsWith('column-')) {
-      // Dropped on empty column
       targetColumn = over.id.replace('column-', '') as Column;
-      targetIndex = 0;
+      targetIndex = tasksByColumn[targetColumn].length;
     } else {
-      // Dropped on a task
       const overTask = tasks.find((t) => t.id === over.id);
       if (!overTask) return;
-      targetColumn = overTask.status;
+      targetColumn = overTask.status as Column;
       targetIndex = tasksByColumn[targetColumn].findIndex((t) => t.id === over.id);
     }
 
     const targetTasks = tasksByColumn[targetColumn];
-
-    // Calculate new position
     let newPosition: string;
     if (targetTasks.length === 0) {
       newPosition = generateKeyBetween(null, null);
@@ -159,13 +175,11 @@ function TasksPage() {
       );
     }
 
-    if (activeTask.status !== targetColumn || activeTask.position !== newPosition) {
-      moveMutation.mutate({
-        id: activeTask.id,
-        status: targetColumn,
-        position: newPosition,
-      });
-    }
+    moveMutation.mutate({
+      id: activeTask.id,
+      status: targetColumn,
+      position: newPosition,
+    });
   };
 
   const handleQuickAdd = (column: Column) => {
@@ -199,7 +213,7 @@ function TasksPage() {
         <main className="flex-1 overflow-hidden page-padding">
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCorners}
+            collisionDetection={rectIntersection}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
@@ -275,8 +289,10 @@ function KanbanColumn({
   onQuickAddActivate,
   onTaskClick,
 }: KanbanColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({ id: `column-${column.id}` });
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" ref={setNodeRef}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-text-primary">{column.label}</h3>
@@ -289,8 +305,9 @@ function KanbanColumn({
       <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <div
           className={cn(
-            'flex-1 space-y-2 overflow-y-auto pb-2',
-            tasks.length === 0 && !isQuickAddActive && 'border-2 border-dashed border-border-subtle rounded-xl flex items-center justify-center'
+            'flex-1 space-y-2 overflow-y-auto pb-2 min-h-64',
+            tasks.length === 0 && !isQuickAddActive ? 'border-2 border-dashed border-border-subtle rounded-xl flex items-center justify-center' : '',
+            isOver && 'bg-accent-primary-muted rounded-xl'
           )}
           id={`column-${column.id}`}
         >

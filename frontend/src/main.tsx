@@ -4,8 +4,6 @@ import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { routeTree } from './routeTree.gen';
 import './index.css';
-import 'geist/font/sans';
-import 'geist/font/mono';
 
 const queryClient = new QueryClient({
   defaultOptions: {

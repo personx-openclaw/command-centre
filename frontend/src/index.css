@@ -2,45 +2,36 @@
 
 @layer base {
   :root {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
-
-    --muted: 223 47% 11%;
-    --muted-foreground: 215.4 16.3% 56.9%;
-
-    --popover: 224 71% 4%;
-    --popover-foreground: 215 20.2% 65.1%;
-
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
-
-    --card: 224 71% 4%;
-    --card-foreground: 213 31% 91%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 222.2 47.4% 11.2%;
-    --secondary-foreground: 210 40% 98%;
-
-    --accent: 216 34% 17%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-
-    --ring: 216 34% 17%;
-
-    --radius: 0.5rem;
+    --bg-base: #09090B;
+    --bg-surface: #18181B;
+    --bg-elevated: #27272A;
+    --text-primary: #FAFAFA;
+    --text-secondary: #A1A1AA;
+    --text-muted: #52525B;
+    --border-subtle: #27272A;
+    --border-default: #3F3F46;
+    --accent-primary: #6366F1;
+    --accent-primary-hover: #818CF8;
+    --accent-primary-muted: rgba(99, 102, 241, 0.15);
+    --semantic-success: #10B981;
+    --semantic-warning: #F59E0B;
+    --semantic-error: #EF4444;
+    --semantic-info: #3B82F6;
+    --kanban-backlog: #52525B;
+    --kanban-today: #6366F1;
+    --kanban-in-progress: #F59E0B;
+    --kanban-done: #10B981;
+    --radius: 0.75rem;
   }
-}
 
-@layer base {
   * {
-    @apply border-border;
+    border-color: var(--border-subtle);
   }
+
   body {
-    @apply bg-background text-foreground font-sans;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Geist Sans', system-ui, sans-serif;
     font-feature-settings: 'rlig' 1, 'calt' 1;
   }
 }

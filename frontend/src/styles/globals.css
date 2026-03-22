@@ -1,0 +1,41 @@
+@import 'tailwindcss';
+
+@layer base {
+  * {
+    @apply border-border-default;
+  }
+
+  body {
+    @apply bg-bg-base text-text-primary font-sans;
+    font-size: 14px;
+    line-height: 1.6;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+    line-height: 1.2;
+  }
+
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  .card-padding {
+    @apply p-6;
+  }
+
+  .page-padding {
+    @apply p-8;
+  }
+
+  .sidebar-width {
+    width: 240px;
+  }
+
+  .sidebar-collapsed {
+    width: 64px;
+  }
+}
