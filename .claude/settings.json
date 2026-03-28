@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(*)",
+      "Write(*)",
+      "NotebookEdit(*)",
+      "Bash",
+      "WebFetch(domain:*)",
+      "WebSearch"
+    ],
+    "deny": [],
+    "ask": [
+      "Bash(rm *)",
+      "Bash(rmdir *)",
+      "Bash(chmod *)",
+      "Bash(chown *)",
+      "Bash(git push *)",
+      "Bash(git reset *)",
+      "Bash(npm *)",
+      "Bash(docker *)",
+      "Bash(kill *)",
+      "Bash(killall *)",
+      "Bash(systemctl *)",
+      "Bash(sudo *)"
+    ]
+  },
+  "plansDirectory": "./plans",
+  "outputStyle": "Explanatory",
+  "attribution": {
+    "commit": "Co-Authored-By: Claude <noreply@anthropic.com>",
+    "pr": "Generated with [Claude Code](https://claude.ai/code)"
+  },
+  "respectGitignore": true,
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70"
+  }
+}
