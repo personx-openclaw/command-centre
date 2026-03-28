@@ -53,6 +53,12 @@ export class ApiClient {
   async moveTask(id: string, status: string, position: string) {
     return this.request<any>(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ status, position }) });
   }
+
+  async getProspects() { return this.request<any[]>('/prospects'); }
+  async getProspect(id: string) { return this.request<any>(`/prospects/${id}`); }
+  async createProspect(data: any) { return this.request<any>('/prospects', { method: 'POST', body: JSON.stringify(data) }); }
+  async updateProspect(id: string, data: any) { return this.request<any>(`/prospects/${id}`, { method: 'PATCH', body: JSON.stringify(data) }); }
+  async deleteProspect(id: string) { return this.request<any>(`/prospects/${id}`, { method: 'DELETE' }); }
 }
 
 export const api = new ApiClient();

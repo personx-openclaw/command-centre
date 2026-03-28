@@ -13,6 +13,7 @@ import { networkApi } from '@/lib/api-network';
 const NAV_ITEMS = [
   { path: '/overview', label: 'Overview', icon: LayoutDashboard, active: false },
   { path: '/tasks', label: 'Tasks', icon: KanbanSquare, active: true },
+  { path: '/prospects', label: 'Prospects', icon: Users, active: true },
   { path: '/runway', label: 'Runway', icon: Wallet, active: false },
   { path: '/brain', label: 'Second Brain', icon: Brain, active: false },
   { path: '/training', label: 'Training', icon: Activity, active: false },

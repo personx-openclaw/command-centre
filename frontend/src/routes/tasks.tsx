@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
@@ -55,6 +55,7 @@ function TasksPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [quickAddColumn, setQuickAddColumn] = useState<Column | null>(null);
   const [quickAddValue, setQuickAddValue] = useState('');
+  const [filter, setFilter] = useState<'all' | 'urgent' | 'high' | 'medium' | 'low' | 'ai'>('all');
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -103,8 +104,14 @@ function TasksPage() {
     },
   });
 
+  const filteredTasks = tasks.filter((t) => {
+    if (filter === 'all') return true;
+    if (filter === 'ai') return t.source === 'telegram';
+    return t.priority === filter;
+  });
+
   const tasksByColumn = COLUMNS.reduce((acc, col) => {
-    acc[col.id] = tasks
+    acc[col.id] = filteredTasks
       .filter((t) => t.status === col.id)
       .sort((a, b) => a.position.localeCompare(b.position));
     return acc;
@@ -210,7 +217,43 @@ function TasksPage() {
       >
         <Header title="Tasks" />
 
-        <main className="flex-1 overflow-hidden page-padding">
+        <main className="flex-1 overflow-hidden flex flex-col px-8 py-6">
+          {/* Filter bar */}
+          <div className="flex items-center gap-2 mb-6 flex-shrink-0">
+            <span className="text-xs text-[#71717A] font-medium mr-1">Filter:</span>
+            {(['all', 'urgent', 'high', 'medium', 'low'] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setFilter(p)}
+                className={'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ' + (
+                  filter === p
+                    ? 'bg-[#6366F1] text-white'
+                    : 'bg-[#27272A] text-[#71717A] hover:text-[#FAFAFA] hover:bg-[#3F3F46]'
+                )}
+              >
+                {p === 'all' ? 'All' : p.charAt(0).toUpperCase() + p.slice(1)}
+              </button>
+            ))}
+            <button
+              onClick={() => setFilter('ai')}
+              className={'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ' + (
+                filter === 'ai'
+                  ? 'bg-[#6366F1] text-white'
+                  : 'bg-[#27272A] text-[#71717A] hover:text-[#FAFAFA] hover:bg-[#3F3F46]'
+              )}
+            >
+              AI only
+            </button>
+            {filter !== 'all' && (
+              <button
+                onClick={() => setFilter('all')}
+                className="ml-2 text-xs text-[#71717A] hover:text-[#FAFAFA] transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
           <DndContext
             sensors={sensors}
             collisionDetection={rectIntersection}
@@ -218,7 +261,7 @@ function TasksPage() {
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
-            <div className="h-full grid grid-cols-4 gap-4">
+            <div className="flex-1 grid grid-cols-4 gap-4 overflow-hidden">
               {COLUMNS.map((column) => (
                 <KanbanColumn
                   key={column.id}
@@ -294,9 +337,9 @@ function KanbanColumn({
   return (
     <div className="flex flex-col h-full" ref={setNodeRef}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-text-primary">{column.label}</h3>
-        <span className="text-xs text-text-muted bg-bg-elevated px-2 py-1 rounded-full">
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#27272A]">
+        <h3 className="text-sm font-semibold text-[#FAFAFA] tracking-wide uppercase">{column.label}</h3>
+        <span className="text-xs font-medium text-[#71717A] bg-[#27272A] px-2.5 py-1 rounded-full min-w-[28px] text-center">
           {tasks.length}
         </span>
       </div>
@@ -374,7 +417,7 @@ function TaskCard({ task, isDragging, onClick }: TaskCardProps) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isSortableDragging ? 0.5 : 1,
+    opacity: isSortableDragging ? 0 : 1,
   };
 
   const tags = task.tags ? JSON.parse(task.tags) : [];
@@ -384,45 +427,54 @@ function TaskCard({ task, isDragging, onClick }: TaskCardProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        'bg-bg-surface border border-border-default rounded-xl p-4 group hover:border-border-hover transition-colors',
-        isDragging && 'shadow-lg'
+        'bg-[#18181B] border border-[#3F3F46] rounded-xl p-4 group cursor-pointer transition-all hover:border-[#6366F1]/50 hover:bg-[#1e1e24]',
+        isDragging && 'shadow-xl border-[#6366F1]/50'
       )}
+      onClick={onClick}
     >
-      <div className="flex items-start gap-3">
-        <div
-          className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
-          style={{ backgroundColor: PRIORITY_COLORS[task.priority] }}
-        />
-        <div className="flex-1 min-w-0" onClick={onClick}>
-          <p className="text-sm font-semibold text-text-primary cursor-pointer">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2 flex-1 min-w-0">
+          <div
+            className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0"
+            style={{ backgroundColor: PRIORITY_COLORS[task.priority] }}
+          />
+          <p className="text-sm font-medium text-[#FAFAFA] leading-snug">
             {task.title}
           </p>
         </div>
         <button
           {...attributes}
           {...listeners}
-          className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing text-text-muted hover:text-text-secondary"
+          onClick={(e) => e.stopPropagation()}
+          className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing text-[#52525B] hover:text-[#A1A1AA] flex-shrink-0 mt-0.5"
         >
-          <GripVertical size={16} />
+          <GripVertical size={14} />
         </button>
       </div>
 
-      <div className="mt-3 flex items-center gap-2 flex-wrap">
-        {tags.map((tag: string, i: number) => (
-          <span
-            key={i}
-            className="text-xs bg-bg-elevated text-text-muted px-2 py-1 rounded"
-          >
-            {tag}
-          </span>
-        ))}
-        {task.source === 'telegram' && (
-          <span className="text-xs bg-accent-primary-muted text-accent-primary px-2 py-1 rounded flex items-center gap-1">
-            <Sparkles size={10} />
-            AI
-          </span>
-        )}
-      </div>
+      {tags.length > 0 && (
+        <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
+          {tags.slice(0, 3).map((tag: string, i: number) => (
+            <span
+              key={i}
+              className="text-xs bg-[#27272A] text-[#71717A] px-2 py-0.5 rounded-md"
+            >
+              {tag}
+            </span>
+          ))}
+          {task.source === 'telegram' && (
+            <span className="text-xs bg-[#6366F1]/15 text-[#818CF8] px-2 py-0.5 rounded-md flex items-center gap-1">
+              <Sparkles size={9} />
+              AI
+            </span>
+          )}
+          {task.agentType && (
+            <span className="text-xs bg-[#10B981]/15 text-[#10B981] px-2 py-0.5 rounded-md">
+              auto
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -442,156 +494,225 @@ function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetailPanelP
     status: task.status,
     tags: task.tags ? JSON.parse(task.tags).join(', ') : '',
     dueDate: task.dueDate || '',
+    agentType: task.agentType || '',
+    agentDescription: task.agentDescription || task.description || '',
   });
+  const [agentEnabled, setAgentEnabled] = useState(!!task.agentType);
+
+  useEffect(() => {
+    setFormData({
+      title: task.title,
+      description: task.description || '',
+      priority: task.priority,
+      status: task.status,
+      tags: task.tags ? JSON.parse(task.tags).join(', ') : '',
+      dueDate: task.dueDate || '',
+      agentType: task.agentType || '',
+      agentDescription: task.agentDescription || task.description || '',
+    });
+    setAgentEnabled(!!task.agentType);
+  }, [task.id]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
 
   const handleSave = () => {
     onUpdate({
-      ...formData,
-      tags: JSON.stringify(
-        formData.tags
-          .split(',')
-          .map((t) => t.trim())
-          .filter(Boolean)
-      ),
+      title: formData.title,
+      description: formData.description,
+      priority: formData.priority as Task['priority'],
+      status: formData.status as Task['status'],
+      tags: JSON.stringify(formData.tags.split(',').map((t) => t.trim()).filter(Boolean)),
+      dueDate: formData.dueDate || null,
+      agentType: agentEnabled && formData.agentType ? formData.agentType as Task['agentType'] : null,
+      agentDescription: agentEnabled && formData.agentDescription ? formData.agentDescription : null,
     });
+    onClose();
   };
+
+  const inputClass = "w-full px-3 py-2.5 bg-[#27272A] border border-[#3F3F46] rounded-lg text-[#FAFAFA] text-sm placeholder:text-[#52525B] focus:outline-none focus:border-[#6366F1] transition-colors";
+  const labelClass = "block text-xs font-medium text-[#71717A] uppercase tracking-wider mb-1.5";
 
   return (
     <>
-      {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="fixed inset-0 bg-black/50 z-50"
+        className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm"
       />
-
-      {/* Panel */}
-      <motion.div
-        initial={{ x: '100%' }}
-        animate={{ x: 0 }}
-        exit={{ x: '100%' }}
-        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-        className="fixed right-0 top-0 h-screen w-[480px] bg-bg-surface border-l border-border-default shadow-2xl z-50 flex flex-col"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border-subtle">
-          <h2 className="text-lg font-semibold text-text-primary">Task Details</h2>
-          <button
-            onClick={onClose}
-            className="text-text-muted hover:text-text-primary transition-colors"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
-              Title
-            </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 bg-bg-elevated border border-border-default rounded-lg text-text-primary focus:outline-none focus:border-accent-primary"
-            />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 8 }}
+          transition={{ type: 'spring', damping: 30, stiffness: 400 }}
+          className="w-full max-w-xl bg-[#18181B] border border-[#3F3F46] rounded-2xl shadow-2xl pointer-events-auto flex flex-col max-h-[90vh]"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[#27272A]">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: PRIORITY_COLORS[formData.priority as Task['priority']] || '#6366F1' }} />
+              <span className="text-xs font-medium text-[#71717A] uppercase tracking-wider">{formData.priority}</span>
+            </div>
+            <button onClick={onClose} className="text-[#52525B] hover:text-[#FAFAFA] transition-colors p-1 rounded-lg hover:bg-[#27272A]">
+              <X size={18} />
+            </button>
           </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-              className="w-full px-3 py-2 bg-bg-elevated border border-border-default rounded-lg text-text-primary focus:outline-none focus:border-accent-primary resize-none"
-            />
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+            {/* Title */}
+            <div>
+              <label className={labelClass}>Title</label>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className={inputClass}
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className={labelClass}>Description</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={5}
+                placeholder="What needs to be done?"
+                className={inputClass + ' resize-y min-h-[120px]'}
+              />
+            </div>
+
+            {/* Priority + Status row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>Priority</label>
+                <select
+                  value={formData.priority}
+                  onChange={(e) => setFormData({ ...formData, priority: e.target.value as Task['priority'] })}
+                  className={inputClass}
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Column</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as Task['status'] })}
+                  className={inputClass}
+                >
+                  <option value="backlog">Backlog</option>
+                  <option value="today">Today</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="done">Done</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Tags + Due date row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>Tags</label>
+                <input
+                  type="text"
+                  value={formData.tags}
+                  onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                  placeholder="tag1, tag2"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Due date</label>
+                <input
+                  type="date"
+                  value={formData.dueDate}
+                  onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+
+            {/* OpenClaw section */}
+            <div className="border-t border-[#27272A] pt-5">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm font-medium text-[#FAFAFA]">Automate with OpenClaw</p>
+                  <p className="text-xs text-[#52525B] mt-0.5">Let an agent complete this task and report back</p>
+                </div>
+                <button
+                  onClick={() => setAgentEnabled(!agentEnabled)}
+                  className={'relative inline-flex items-center w-11 h-6 rounded-full transition-colors flex-shrink-0 ' + (agentEnabled ? 'bg-[#6366F1]' : 'bg-[#3F3F46]')}
+                >
+                  <span className={'inline-block w-4 h-4 bg-white rounded-full shadow transition-transform ' + (agentEnabled ? 'translate-x-6' : 'translate-x-1')} />
+                </button>
+              </div>
+
+              {agentEnabled && (
+                <div className="space-y-3">
+                  <div>
+                    <label className={labelClass}>Agent type</label>
+                    <select
+                      value={formData.agentType}
+                      onChange={(e) => setFormData({ ...formData, agentType: e.target.value })}
+                      className={inputClass}
+                    >
+                      <option value="">Select type...</option>
+                      <option value="research">Research — search and summarise a topic</option>
+                      <option value="market_scan">Market scan — funding rounds and competitors</option>
+                      <option value="prospect">Prospect — research a firm and draft outreach</option>
+                      <option value="analysis">Analysis — analyse a document or URL</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Agent brief</label>
+                    <textarea
+                      value={formData.agentDescription}
+                      onChange={(e) => setFormData({ ...formData, agentDescription: e.target.value })}
+                      rows={5}
+                      placeholder="Describe what the agent should do, what to look for, and what format to return results in..."
+                      className={inputClass + ' resize-y min-h-[120px]'}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Priority */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
-              Priority
-            </label>
-            <select
-              value={formData.priority}
-              onChange={(e) => setFormData({ ...formData, priority: e.target.value as Task['priority'] })}
-              className="w-full px-3 py-2 bg-bg-elevated border border-border-default rounded-lg text-text-primary focus:outline-none focus:border-accent-primary"
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-[#27272A] flex items-center justify-between">
+            <button
+              onClick={() => { if (confirm('Delete this task?')) { onDelete(); onClose(); } }}
+              className="text-sm text-[#EF4444] hover:text-[#EF4444]/80 transition-colors"
             >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
+              Delete task
+            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm text-[#A1A1AA] hover:text-[#FAFAFA] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="px-4 py-2 bg-[#6366F1] hover:bg-[#818CF8] text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Save
+              </button>
+            </div>
           </div>
-
-          {/* Status */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
-              Status
-            </label>
-            <select
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value as Task['status'] })}
-              className="w-full px-3 py-2 bg-bg-elevated border border-border-default rounded-lg text-text-primary focus:outline-none focus:border-accent-primary"
-            >
-              <option value="backlog">Backlog</option>
-              <option value="today">Today</option>
-              <option value="in_progress">In Progress</option>
-              <option value="done">Done</option>
-            </select>
-          </div>
-
-          {/* Tags */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
-              Tags (comma-separated)
-            </label>
-            <input
-              type="text"
-              value={formData.tags}
-              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-              placeholder="work, urgent, bug"
-              className="w-full px-3 py-2 bg-bg-elevated border border-border-default rounded-lg text-text-primary focus:outline-none focus:border-accent-primary"
-            />
-          </div>
-
-          {/* Due Date */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
-              Due Date
-            </label>
-            <input
-              type="date"
-              value={formData.dueDate}
-              onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-              className="w-full px-3 py-2 bg-bg-elevated border border-border-default rounded-lg text-text-primary focus:outline-none focus:border-accent-primary"
-            />
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="p-6 border-t border-border-subtle flex items-center justify-between">
-          <button
-            onClick={onDelete}
-            className="px-4 py-2 bg-semantic-error text-white rounded-lg hover:bg-semantic-error/90 transition-colors"
-          >
-            Delete
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary-hover transition-colors"
-          >
-            Save Changes
-          </button>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </>
   );
 }
