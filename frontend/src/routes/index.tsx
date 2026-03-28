@@ -15,6 +15,7 @@ export const Route = createFileRoute('/')({
     } catch {
       throw redirect({ to: '/login' });
     }
+    throw redirect({ to: '/tasks' });
   },
   component: Dashboard,
 });
