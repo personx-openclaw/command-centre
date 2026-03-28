@@ -6,7 +6,7 @@ import { Header } from '@/components/layout/header';
 import { useUIStore } from '@/stores/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
-import { X, ChevronUp, ChevronDown, Copy, Check } from 'lucide-react';
+import { X, ChevronUp, ChevronDown, Copy, Check, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/prospects')({
@@ -275,6 +275,7 @@ function ProspectsPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [filterStatus, setFilterStatus] = useState<string>('active');
   const [filterCountry, setFilterCountry] = useState<string>('all');
+  const [search, setSearch] = useState('');
 
   const { data: prospects = [], isLoading } = useQuery({
     queryKey: ['prospects'],
@@ -292,6 +293,7 @@ function ProspectsPage() {
   };
 
   const ACTIVE_STATUSES = ['identified','researching','researched','surfaced','approved','sent_linkedin','sent_email','linkedin_replied','email_replied','replied','meeting_booked'];
+  const searchLower = search.toLowerCase();
   const filtered = prospects
     .filter((p: Prospect) => {
       if (filterStatus === 'all') return true;
@@ -299,6 +301,12 @@ function ProspectsPage() {
       return p.status === filterStatus;
     })
     .filter((p: Prospect) => filterCountry === 'all' || p.firmCountry === filterCountry)
+    .filter((p: Prospect) => {
+      if (!searchLower) return true;
+      return (p.firmName?.toLowerCase().includes(searchLower) ||
+              p.contactName?.toLowerCase().includes(searchLower) ||
+              p.contactTitle?.toLowerCase().includes(searchLower));
+    })
     .sort((a: Prospect, b: Prospect) => {
       let av: any = a[sortField as keyof Prospect];
       let bv: any = b[sortField as keyof Prospect];
@@ -317,10 +325,10 @@ function ProspectsPage() {
   const thClass = "px-4 py-3 text-left text-xs font-medium text-[#71717A] uppercase tracking-wider cursor-pointer hover:text-[#FAFAFA] transition-colors select-none";
   const tdClass = "px-4 py-3 text-sm text-[#A1A1AA]";
 
-  const statusGroups = ['all', 'identified', 'researched', 'approved', 'sent_linkedin', 'sent_email', 'linkedin_replied', 'email_replied', 'meeting_booked', 'not_interested', 'skip'];
+  const statusGroups = ['active', 'all', 'identified', 'researched', 'approved', 'sent_linkedin', 'sent_email', 'linkedin_replied', 'email_replied', 'meeting_booked', 'not_interested', 'skip'];
 
   return (
-    <div className="flex h-screen bg-[#09090B]">
+    <div className="flex h-screen bg-bg-base">
       <Sidebar />
       <motion.div animate={{ marginLeft: sidebarCollapsed ? 64 : 240 }} className="flex-1 flex flex-col overflow-hidden">
         <Header title="Prospects" />
@@ -328,48 +336,68 @@ function ProspectsPage() {
 
           {/* Filter bar */}
           <div className="flex flex-wrap items-center gap-3 mb-5 flex-shrink-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-[#71717A] font-medium shrink-0">Status:</span>
-              <div className="flex gap-1.5 flex-wrap">
-                <button onClick={() => setFilterStatus('active')}
-                  className={'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ' + (filterStatus === 'active' ? 'bg-[#6366F1] text-white' : 'bg-[#27272A] text-[#71717A] hover:text-[#FAFAFA]')}>
-                  Active
-                </button>
-                <button onClick={() => setFilterStatus('all')}
-                  className={'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ' + (filterStatus === 'all' ? 'bg-[#6366F1] text-white' : 'bg-[#27272A] text-[#71717A] hover:text-[#FAFAFA]')}>
-                  All
-                </button>
-                {statusGroups.filter(s => s !== 'all').map(s => (
-                  <button key={s} onClick={() => setFilterStatus(s)}
-                    className={'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ' + (
-                      filterStatus === s ? 'bg-[#6366F1] text-white' : 'bg-[#27272A] text-[#71717A] hover:text-[#FAFAFA]'
-                    )}>
-                    {STATUS_CONFIG[s]?.label || s}
-                  </button>
-                ))}
-              </div>
+            {/* Search */}
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#52525B]" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search firms or contacts..."
+                className="pl-8 pr-3 py-1.5 text-xs bg-[#27272A] border border-[#3F3F46] rounded-lg text-[#FAFAFA] placeholder:text-[#52525B] focus:outline-none focus:border-[#6366F1] transition-colors w-52"
+              />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-[#71717A] font-medium shrink-0">Country:</span>
+
+            <div className="h-4 w-px bg-[#3F3F46]" />
+
+            {/* Status filters */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {statusGroups.map(s => (
+                <button key={s} onClick={() => setFilterStatus(s)}
+                  className={'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ' + (
+                    filterStatus === s ? 'bg-[#6366F1] text-white' : 'bg-[#27272A] text-[#71717A] hover:text-[#FAFAFA] hover:bg-[#3F3F46]'
+                  )}>
+                  {s === 'active' ? 'Active' : s === 'all' ? 'All' : STATUS_CONFIG[s]?.label || s}
+                </button>
+              ))}
+            </div>
+
+            <div className="h-4 w-px bg-[#3F3F46]" />
+
+            {/* Country filters */}
+            <div className="flex items-center gap-1.5">
               {['all', 'UK', 'EU'].map(c => (
                 <button key={c} onClick={() => setFilterCountry(c)}
                   className={'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ' + (
-                    filterCountry === c ? 'bg-[#6366F1] text-white' : 'bg-[#27272A] text-[#71717A] hover:text-[#FAFAFA]'
+                    filterCountry === c ? 'bg-[#6366F1] text-white' : 'bg-[#27272A] text-[#71717A] hover:text-[#FAFAFA] hover:bg-[#3F3F46]'
                   )}>
                   {c === 'all' ? 'All' : c}
                 </button>
               ))}
             </div>
-            <span className="text-xs text-[#52525B] ml-auto shrink-0">{filtered.length} prospects</span>
+
+            <span className="text-xs text-[#52525B] ml-auto shrink-0">{filtered.length} prospect{filtered.length !== 1 ? 's' : ''}</span>
           </div>
 
           {/* Table */}
           <div className="flex-1 overflow-auto rounded-xl border border-[#27272A]">
             {isLoading ? (
               <div className="flex items-center justify-center h-40 text-[#52525B] text-sm">Loading...</div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-40 text-[#52525B]">
+                <p className="text-sm">No prospects match your filters</p>
+                {(filterStatus !== 'active' || filterCountry !== 'all' || search) && (
+                  <button
+                    onClick={() => { setFilterStatus('active'); setFilterCountry('all'); setSearch(''); }}
+                    className="mt-2 text-xs text-[#6366F1] hover:text-[#818CF8] transition-colors"
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
             ) : (
               <table className="w-full">
-                <thead className="sticky top-0 bg-[#18181B] border-b border-[#27272A]">
+                <thead className="sticky top-0 bg-[#18181B] border-b border-[#27272A] z-10">
                   <tr>
                     <th className={thClass} onClick={() => handleSort('firmName')}>
                       <div className="flex items-center gap-1">Firm <SortIcon field="firmName" /></div>
@@ -394,12 +422,14 @@ function ProspectsPage() {
                 <tbody className="divide-y divide-[#27272A]">
                   {filtered.map((p: Prospect) => (
                     <tr key={p.id} onClick={() => setSelectedProspect(p)}
-                      className="hover:bg-[#18181B] cursor-pointer transition-colors">
+                      className="hover:bg-[#18181B]/80 cursor-pointer transition-colors group">
                       <td className={tdClass}>
                         <span className="font-medium text-[#FAFAFA]">{p.firmName}</span>
                       </td>
                       <td className={tdClass}>{p.contactName || <span className="text-[#52525B]">Not researched</span>}</td>
-                      <td className={tdClass}>{p.contactTitle || <span className="text-[#52525B]">--</span>}</td>
+                      <td className={tdClass}>
+                        <span className="max-w-[160px] truncate block">{p.contactTitle || <span className="text-[#52525B]">--</span>}</span>
+                      </td>
                       <td className={tdClass}>{p.firmAum || '--'}</td>
                       <td className={tdClass}>
                         <span className={'text-xs px-2 py-0.5 rounded font-medium ' + (p.firmCountry === 'UK' ? 'bg-[#1e3a5f] text-[#60a5fa]' : 'bg-[#1a2e1a] text-[#4ade80]')}>
@@ -409,44 +439,44 @@ function ProspectsPage() {
                       <td className={tdClass}><ScoreBar score={p.score || 0} /></td>
                       <td className={tdClass}><StatusBadge status={p.status} /></td>
                       <td className={tdClass} onClick={(e) => e.stopPropagation()}>
-                        <div className="flex gap-1.5 flex-wrap">
+                        <div className="flex items-center gap-2">
                           {p.status === 'researched' && (
                             <button onClick={() => updateMutation.mutate({ id: p.id, data: { status: 'approved' } })}
-                              className="text-xs px-2 py-1 bg-[#6366F1] text-white rounded-md hover:bg-[#818CF8] transition-colors">
+                              className="text-xs px-2.5 py-1 bg-[#6366F1] text-white rounded-md hover:bg-[#818CF8] transition-colors whitespace-nowrap">
                               Approve
                             </button>
                           )}
                           {p.status === 'approved' && (<>
                             <button onClick={() => updateMutation.mutate({ id: p.id, data: { status: 'sent_linkedin', outreachSentAt: new Date().toISOString() } })}
-                              className="text-xs px-2 py-1 bg-[#0EA5E9] text-white rounded-md hover:bg-[#38BDF8] transition-colors">
+                              className="text-xs px-2.5 py-1 bg-[#0EA5E9] text-white rounded-md hover:bg-[#38BDF8] transition-colors whitespace-nowrap">
                               LinkedIn sent
                             </button>
                             <button onClick={() => updateMutation.mutate({ id: p.id, data: { status: 'sent_email', outreachSentAt: new Date().toISOString() } })}
-                              className="text-xs px-2 py-1 bg-[#6366F1] text-white rounded-md hover:bg-[#818CF8] transition-colors">
+                              className="text-xs px-2.5 py-1 bg-[#6366F1] text-white rounded-md hover:bg-[#818CF8] transition-colors whitespace-nowrap">
                               Email sent
                             </button>
                           </>)}
                           {p.status === 'sent_linkedin' && (
                             <button onClick={() => updateMutation.mutate({ id: p.id, data: { status: 'linkedin_replied', replyReceivedAt: new Date().toISOString() } })}
-                              className="text-xs px-2 py-1 bg-[#10B981] text-white rounded-md hover:bg-[#34D399] transition-colors">
+                              className="text-xs px-2.5 py-1 bg-[#10B981] text-white rounded-md hover:bg-[#34D399] transition-colors whitespace-nowrap">
                               Replied
                             </button>
                           )}
                           {p.status === 'sent_email' && (
                             <button onClick={() => updateMutation.mutate({ id: p.id, data: { status: 'email_replied', replyReceivedAt: new Date().toISOString() } })}
-                              className="text-xs px-2 py-1 bg-[#10B981] text-white rounded-md hover:bg-[#34D399] transition-colors">
+                              className="text-xs px-2.5 py-1 bg-[#10B981] text-white rounded-md hover:bg-[#34D399] transition-colors whitespace-nowrap">
                               Replied
                             </button>
                           )}
                           {['linkedin_replied','email_replied'].includes(p.status) && (
                             <button onClick={() => updateMutation.mutate({ id: p.id, data: { status: 'meeting_booked', meetingBookedAt: new Date().toISOString() } })}
-                              className="text-xs px-2 py-1 bg-[#10B981] text-white rounded-md hover:bg-[#34D399] transition-colors">
+                              className="text-xs px-2.5 py-1 bg-[#10B981] text-white rounded-md hover:bg-[#34D399] transition-colors whitespace-nowrap">
                               Meeting booked
                             </button>
                           )}
                           {!['not_interested', 'skip', 'meeting_booked'].includes(p.status) && (
                             <button onClick={() => updateMutation.mutate({ id: p.id, data: { status: 'skip' } })}
-                              className="text-xs px-2 py-1 bg-[#27272A] text-[#71717A] rounded-md hover:text-[#EF4444] transition-colors">
+                              className="text-xs px-2.5 py-1 bg-[#27272A] text-[#71717A] rounded-md hover:text-[#EF4444] hover:bg-[#27272A] transition-colors whitespace-nowrap">
                               Skip
                             </button>
                           )}
