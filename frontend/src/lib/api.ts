@@ -1,5 +1,27 @@
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
+
+export interface Task {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string | null;
+  status: 'backlog' | 'today' | 'in_progress' | 'done';
+  priority: 'urgent' | 'high' | 'medium' | 'low';
+  position: string;
+  tags?: string | null;
+  source: 'manual' | 'telegram' | 'morning_report';
+  agentEnabled?: boolean;
+  agentType?: string | null;
+  agentDescription?: string | null;
+  agentStatus?: string | null;
+  agentResult?: string | null;
+  dueDate?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class ApiClient {
   private getToken(): string | null {
     return localStorage.getItem('auth_token');

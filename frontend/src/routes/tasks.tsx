@@ -25,7 +25,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Plus, GripVertical, X, Sparkles } from 'lucide-react';
+import { Plus, GripVertical, X, Sparkles, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/tasks')({
@@ -82,9 +82,11 @@ function TasksPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Task> }) =>
       api.updateTask(id, data),
-    onSuccess: () => {
+    onSuccess: (_, { data }) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      setSelectedTask(null);
+      if (data.status || data.title || data.description || data.priority || data.tags) {
+        setSelectedTask(null);
+      }
     },
   });
 
@@ -277,6 +279,8 @@ function TasksPage() {
                   }}
                   onQuickAddActivate={() => setQuickAddColumn(column.id)}
                   onTaskClick={setSelectedTask}
+                  onTaskDelete={(id) => deleteMutation.mutate(id)}
+                  onTaskToggleAgent={(id, enabled) => updateMutation.mutate({ id, data: { agentEnabled: enabled } })}
                 />
               ))}
             </div>
@@ -319,6 +323,8 @@ interface KanbanColumnProps {
   onQuickAddCancel: () => void;
   onQuickAddActivate: () => void;
   onTaskClick: (task: Task) => void;
+  onTaskDelete: (id: string) => void;
+  onTaskToggleAgent: (id: string, enabled: boolean) => void;
 }
 
 function KanbanColumn({
@@ -331,6 +337,8 @@ function KanbanColumn({
   onQuickAddCancel,
   onQuickAddActivate,
   onTaskClick,
+  onTaskDelete,
+  onTaskToggleAgent,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `column-${column.id}` });
 
@@ -362,6 +370,8 @@ function KanbanColumn({
                 key={task.id}
                 task={task}
                 onClick={() => onTaskClick(task)}
+                onDelete={() => onTaskDelete(task.id)}
+                onToggleAgent={() => onTaskToggleAgent(task.id, !task.agentEnabled)}
               />
             ))
           )}
@@ -402,9 +412,12 @@ interface TaskCardProps {
   task: Task;
   isDragging?: boolean;
   onClick?: () => void;
+  onDelete?: () => void;
+  onToggleAgent?: () => void;
 }
 
-function TaskCard({ task, isDragging, onClick }: TaskCardProps) {
+function TaskCard({ task, isDragging, onClick, onDelete, onToggleAgent }: TaskCardProps) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const {
     attributes,
     listeners,
@@ -427,29 +440,38 @@ function TaskCard({ task, isDragging, onClick }: TaskCardProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        'bg-[#18181B] border border-[#3F3F46] rounded-xl p-4 group cursor-pointer transition-all hover:border-[#6366F1]/50 hover:bg-[#1e1e24]',
+        'bg-[#18181B] border border-[#3F3F46] rounded-xl p-4 group cursor-pointer transition-all hover:border-[#6366F1]/50 hover:bg-[#1e1e24] relative',
         isDragging && 'shadow-xl border-[#6366F1]/50'
       )}
-      onClick={onClick}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-start gap-2 flex-1 min-w-0">
+      <div className="flex items-start justify-between gap-2" {...attributes} {...listeners}>
+        <div className="flex items-start gap-2 flex-1 min-w-0" onClick={onClick}>
           <div
-            className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0"
+            className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
             style={{ backgroundColor: PRIORITY_COLORS[task.priority] }}
           />
           <p className="text-sm font-medium text-[#FAFAFA] leading-snug">
             {task.title}
           </p>
         </div>
-        <button
-          {...attributes}
-          {...listeners}
-          onClick={(e) => e.stopPropagation()}
-          className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing text-[#52525B] hover:text-[#A1A1AA] flex-shrink-0 mt-0.5"
-        >
-          <GripVertical size={14} />
-        </button>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleAgent?.(); }}
+            className={'p-1.5 rounded transition-colors ' + (task.agentEnabled ? 'text-[#6366F1]' : 'text-[#52525B] opacity-0 group-hover:opacity-100 hover:text-[#6366F1]')}
+            title={task.agentEnabled ? 'Agent mode on — click to disable' : 'Enable agent mode'}
+          >
+            <Zap size={14} fill={task.agentEnabled ? '#6366F1' : 'none'} />
+          </button>
+          {!confirmingDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setConfirmingDelete(true); }}
+              className="p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity text-[#52525B] hover:text-[#EF4444]"
+              title="Delete task"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {tags.length > 0 && (
@@ -475,6 +497,13 @@ function TaskCard({ task, isDragging, onClick }: TaskCardProps) {
           )}
         </div>
       )}
+      {confirmingDelete && (
+        <div className="absolute top-1 right-1 flex items-center gap-1 bg-[#18181B] border border-[#EF4444] rounded-lg px-2 py-1 z-10" onClick={(e) => e.stopPropagation()}>
+          <span className="text-xs text-[#EF4444]">Delete?</span>
+          <button onClick={(e) => { e.stopPropagation(); onDelete?.(); }} className="text-xs text-white bg-[#EF4444] px-1.5 py-0.5 rounded">Yes</button>
+          <button onClick={(e) => { e.stopPropagation(); setConfirmingDelete(false); }} className="text-xs text-[#71717A] hover:text-[#FAFAFA]">No</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -497,7 +526,7 @@ function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetailPanelP
     agentType: task.agentType || '',
     agentDescription: task.agentDescription || task.description || '',
   });
-  const [agentEnabled, setAgentEnabled] = useState(!!task.agentType);
+  const [agentEnabled, setAgentEnabled] = useState(!!task.agentEnabled || !!task.agentType);
 
   useEffect(() => {
     setFormData({
@@ -510,7 +539,7 @@ function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetailPanelP
       agentType: task.agentType || '',
       agentDescription: task.agentDescription || task.description || '',
     });
-    setAgentEnabled(!!task.agentType);
+    setAgentEnabled(!!task.agentEnabled || !!task.agentType);
   }, [task.id]);
 
   useEffect(() => {
@@ -641,6 +670,19 @@ function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetailPanelP
                 />
               </div>
             </div>
+
+            {/* Agent Result */}
+            {task.agentResult && (
+              <div className="border-t border-[#27272A] pt-5">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider">Agent result</p>
+                  <span className="text-xs px-2 py-0.5 rounded bg-[#10B981]/15 text-[#10B981]">Complete</span>
+                </div>
+                <div className="bg-[#27272A] rounded-xl p-4 max-h-96 overflow-y-auto">
+                  <p className="text-sm text-[#A1A1AA] whitespace-pre-wrap leading-relaxed">{task.agentResult}</p>
+                </div>
+              </div>
+            )}
 
             {/* OpenClaw section */}
             <div className="border-t border-[#27272A] pt-5">

@@ -101,4 +101,21 @@ router.post('/ingest', async (req: AuthRequest, res) => {
   }
 });
 
+
+// Agent status update endpoint
+router.patch('/:id/agent', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { agentStatus, agentResult } = req.body;
+    await db.update(schema.tasks)
+      .set({ agentStatus, agentResult, updatedAt: new Date().toISOString() })
+      .where(eq(schema.tasks.id, id));
+    const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.id, id) });
+    res.json(task);
+  } catch (error) {
+    console.error('Agent update error:', error);
+    res.status(500).json({ error: 'Failed to update agent status' });
+  }
+});
+
 export default router;

@@ -30,6 +30,11 @@ export const tasks = sqliteTable('tasks', {
   source: text('source', { enum: ['manual', 'telegram', 'morning_report'] })
     .notNull()
     .default('manual'),
+  agentEnabled: integer('agent_enabled', { mode: 'boolean' }).default(false),
+  agentType: text('agent_type'),
+  agentDescription: text('agent_description'),
+  agentStatus: text('agent_status'),
+  agentResult: text('agent_result'),
   createdAt: text('created_at')
     .notNull()
     .default(sql`(datetime('now'))`),
