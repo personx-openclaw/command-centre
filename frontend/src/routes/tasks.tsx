@@ -25,7 +25,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Plus, GripVertical, X, Sparkles, Zap } from 'lucide-react';
+import { Plus, GripVertical, X, Sparkles, Zap, CheckCircle2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/tasks')({
@@ -444,6 +444,15 @@ function TaskCard({ task, isDragging, onClick, onDelete, onToggleAgent }: TaskCa
         isDragging && 'shadow-xl border-[#6366F1]/50'
       )}
     >
+      {task.agentStatus === 'running' && (
+        <span className="absolute top-1.5 left-1.5 w-2 h-2 rounded-full bg-[#6366F1] animate-pulse" />
+      )}
+      {task.agentStatus === 'complete' && (
+        <CheckCircle2 size={12} className="absolute top-1.5 left-1.5 text-[#10B981]" />
+      )}
+      {task.agentStatus === 'failed' && (
+        <XCircle size={12} className="absolute top-1.5 left-1.5 text-[#EF4444]" />
+      )}
       <div className="flex items-start justify-between gap-2" {...attributes} {...listeners}>
         <div className="flex items-start gap-2 flex-1 min-w-0" onClick={onClick}>
           <div
