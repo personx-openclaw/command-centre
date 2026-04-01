@@ -1,0 +1,12 @@
+{
+  "updatedAt": "2026-03-29T16:20:42.963Z",
+  "topTags": [],
+  "topAgentTypes": [
+    "research"
+  ],
+  "completionRate": 1,
+  "staleTasks": 0,
+  "completedThisWeek": 1,
+  "failedThisWeek": 0,
+  "insights": "1 agent tasks completed, 0 failed (100% success). No stale tasks. Best agent types: research."
+}
